@@ -200,7 +200,6 @@ async function runManager(){
         
             let roleID = await getRoleID(roleBuffer.role);
             let manageID = await getEmployeeID(employeeBuffer.employee);
-r
             updateEmployee(roleID,manageID);
             
 
