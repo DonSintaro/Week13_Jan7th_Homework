@@ -131,7 +131,7 @@ async function runManager(){
 
                     let bufferDepotID = await getDepotID(data4.role);
 
-                    createRole(data.title,data.salary,bufferDepotID);
+                    createRole(data3.title,data3.salary,bufferDepotID);
                 } 
                 else{
                     console.log("You must have a title name!")
@@ -146,23 +146,35 @@ async function runManager(){
 
 ////////////////////////////////////////////////////
         case "Add Department":
-            
+
+            let depotBuffer = await inquirer
+            .prompt([{
+                name: "department",
+                message: "Department Name?: "
+            }])
+            if (depotBuffer.department){
+            createDepartment(depotBuffer.department)
+            }
+            else{
+                console.log("Invalid department name! \n")
+            }
 
 
             break;
 ////////////////////////////////////////////////////
         case "View All Employees By Manager":
 
-
-
+            // let tempList0 = await query("SELECT * FROM employee inner JOIN employee on employee.manager_id = employee.id");
+            // console.log(tempList0);
 
 
             break;
 
-            ////////////////////////////////////////////////////
+////////////////////////////////////////////////////
         case "View All Employees By Department":
-
-
+            let tempList1 = await query("SELECT * FROM employee RIGHT JOIN role on employee.role_id = role.id");
+            
+            console.log(tempList1);
 
 
 
@@ -195,11 +207,8 @@ async function runManager(){
             break;
 /////////////////////////////////////////////////////
         case "View All Employees":
-
-
-
-
-
+            let tempList2 = await query("SELECT * FROM employee");
+            console.log(tempList2);
 
         break;
 
@@ -228,33 +237,32 @@ async function createEmployee(f,l,r,m) {
         console.log(" employee added\n");
 }
 
-function createRole(x,y,z) {
-    connection.query(
-        "INSERT INTO role SET ?",
-        {
+async function createRole(x,y,z) {
+    await query("INSERT INTO role SET ?",{
             title: x,
             salary: y,
             department_id: z
-        },
-        function(err, res) {
-        if (err) throw err;
-        console.log(res.affectedRows + " role created!\n");
-        }
-    );
+        })
+        console.log(" role created!\n");
 }
 
-function createDepartment(x){
-    connection.query(
-        "INSERT INTO department SET ?",
-        {
+async function createDepartment(x){
+    await query("INSERT INTO department SET ?",{
             name: x
-        },
-        function(err, res) {
-        if (err) throw err;
-        console.log(res.affectedRows + " department created!\n");
-        }
-    );
+        })
+        console.log(" department created!\n");
+}
 
+async function updateEmployee(x,y){
+    await query("UPDATE employee SET ? WHERE ?",
+        [
+            {
+            role_id: x
+            },
+            {
+            id: y
+            }
+        ])
 }
 
 async function readDepartments() {
@@ -266,9 +274,6 @@ async function readDepartments() {
     return depotList;
 }
 
-
-
-
 async function readRoles() {
     let roleList;
     let tempList = await query("SELECT * FROM role");
@@ -278,17 +283,15 @@ async function readRoles() {
     return roleList;
 }
 
-
-
-
 async function getDepotID(x){
     let tempList = await query("SELECT * FROM department"); 
-            return tempList.filter(function(y){
+    let tempObj =  tempList.find(function(y){
                 if (y.name === x){
                     return y.id;
                 }
             })
 
+            return tempObj.id
 }
 
 async function getRoleID(x){
@@ -320,22 +323,6 @@ async function getEmployeeID(x){
         })
 
         return tempObj.id;
-}
-
-function updateEmployee(x,y){
-    connection.query(
-        "UPDATE employee SET ? WHERE ?",
-        [
-            {
-            role_id: x
-            },
-            {
-            id: y
-            }
-        ],
-        function(err, res) {
-            if (err) throw err;
-        })
 }
 
 async function checkDupName(x){
