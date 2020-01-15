@@ -1,0 +1,26 @@
+{
+  "name": "week13_jan7th_homework",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "dependencies": {
+    "inquirer": "^7.0.3",
+    "mysql": "^2.17.1",
+    "util": "^0.12.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DonSintaro/Week13_Jan7th_Homework.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/DonSintaro/Week13_Jan7th_Homework/issues"
+  },
+  "homepage": "https://github.com/DonSintaro/Week13_Jan7th_Homework#readme"
+}

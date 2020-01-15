@@ -1,25 +1,29 @@
-inquirer = require("inquirer");
+var inquirer = require("inquirer");
 var mysql = require("mysql");
+var util = require("util");
 
 var connection = mysql.createConnection({
   host: "localhost",
-
-  // Your port; if not 3306
   port: 3306,
-
-  // Your username
   user: "root",
-
-  // Your password
-  password: "",
+  password: "TempServerPassword",
   database: "employee_manager"
 });
+
+const query = util.promisify(connection.query).bind(connection);
 
 connection.connect(function(err) {
     if (err) throw err;
     console.log("connected as id " + connection.threadId + "\n");
+
+    //test("test1");
+
     runManager();
+
+
 });
+
+
 
 async function runManager(){
     var doAgain = true;
@@ -29,55 +33,66 @@ async function runManager(){
     .prompt([{
         type: "list",
         name: "option",
-        message: "Please define what you would like to do: \n 'Post' an item, 'Bid' on an item, or 'exit'",
-        choices: ["View All Employees", "View All Employees By Department", "View All Employees By Manager", "Add Employee", "Update Employee Role", "Add Role", "Add Department"]
+        message: "Please define action",
+        choices: ["View All Employees", "View All Employees By Department", "View All Employees By Manager", "Add Employee", "Update Employee Role", "Add Role", "Add Department","Exit"]
     }])
 
     switch (data.option) {
 ////////////////////////////////////////////////////
         case "Add Employee":
-            const fName = await inquirer
+            let fName = await inquirer
             .prompt([{
                 message: "First name of employee?: ",
                 name: "first_name"
             }]);
             if (fName.first_name != null){
 
-                const lName = await inquirer
+                let lName = await inquirer
                 .prompt([{
                     message: "Last name of employee?: ",
                     name: "last_name"
                 }]);
                 if (lName.last_name != null){
+                    let bufferName = (fName.first_name + " " + lName.last_name);
+                    if(checkDupName(bufferName) != true){
+                        let roleBuffer = await inquirer
+                        .prompt([{
+                            type: "list",
+                            name: "roleSelected",
+                            message: "What is the employee role?: ",
+                            choices: await readRoles()
+                        }])
 
-                    
-                    const roleBuffer = await inquirer
-                    .prompt([{
-                        type: "list",
-                        name: "roleSelected",
-                        message: "What is the employee role?: ",
-                        choices: readRoles()
-                    }])
+                        let roleID = await getRoleID(roleBuffer.roleSelected);
 
-                    let roleID = getRoleID(roleBuffer.roleSelected);
+                        let eManagerBuffer = await inquirer
+                        .prompt([{
+                            type: "list",
+                            name: "managerSelected",
+                            message: "Who is the employee's manager?: ",
+                            choices: await readStaffNames()
+                        }])
 
-                    const eManagerBuffer = await inquirer
-                    .prompt([{
-                        type: "list",
-                        name: "managerSelected",
-                        message: "Who is the employee's manager?: ",
-                        choices: readStaff()
-                    }])
+                        if (eManagerBuffer.managerSelected != "None"){
+                        let manageID = await getEmployeeID(eManagerBuffer.managerSelected);
 
-                    if (eManagerBuffer.managerSelected != "None"){
-                    let manageID = getManagerID(eManagerBuffer.managerSelected);
-                    createEmployee(fName.first_name,lName.last_name,roleID,manageID)
+
+                        console.log(fName.first_name,lName.last_name,roleID,manageID);
+
+
+
+                        createEmployee(fName.first_name,lName.last_name,roleID,manageID)
+                        console.log("-----------------------");
+                        }
+
+                        else{
+                        createEmployee(fName.first_name,lName.last_name,roleID)
+                        console.log("-----------------------");
+                        }
                     }
-
                     else{
-                    createEmployee(fName.first_name,lName.last_name,roleID)
+                        console.log("Duplicate name found, please use a different/altered name or alias")
                     }
-                
                 }
                 else{
                     console.log("You must enter an employee full name! ")
@@ -91,25 +106,107 @@ async function runManager(){
             break;
 
 ////////////////////////////////////////////////////
+        case "Add Role":
+
+            let data3 = await inquirer
+            .prompt([{
+                message: "Role title?: ",
+                name: "title"
+            }
+                , {
+                message: "Salary?: ",
+                name: "salary"
+            }]);
+
+            if (validateNum(data3.salary)){
+                if(data3.title)
+                {
+                    let data4 = await inquirer
+                    .prompt([{
+                        type: "list",
+                        name: "role",
+                        message: "Department of role?: ",
+                        choices: await readDepartments()
+                    }]);
+
+                    let bufferDepotID = await getDepotID(data4.role);
+
+                    createRole(data.title,data.salary,bufferDepotID);
+                } 
+                else{
+                    console.log("You must have a title name!")
+                }
+            }
+            else{
+                console.log("Invalid salary provided, please try again. ")
+            }
+
+
+            break;
+
+////////////////////////////////////////////////////
+        case "Add Department":
+            
+
+
+            break;
+////////////////////////////////////////////////////
+        case "View All Employees By Manager":
+
+
+
+
+
+            break;
+
+            ////////////////////////////////////////////////////
+        case "View All Employees By Department":
+
+
+
+
+
+
+            break;
+////////////////////////////////////////////////////
         case "Update Employee Role":
 
-            const value = await inquirer
+            let employeeBuffer = await inquirer
             .prompt([{
-                message: "Value your pushing?: ",
-                name: "value"
-            }]);
-            ///////////////////////////////////////////////////////////////////// Also here /////////////////////////////////////////////////
+                type: "list",
+                name: "employee",
+                message: "Who's role to change?: ",
+                choices: await readStaffNames()
+            }])
+            let roleBuffer = await inquirer
+            .prompt([{
+                type: "list",
+                name: "role",
+                message: "To what role?: ",
+                choices: await readRoles()
+            }])
+        
+            let roleID = await getRoleID(roleBuffer.roleSelected);
+            let manageID = await getEmployeeID(employeeBuffer.managerSelected);
+
+            updateEmployee(roleID,manageID);
             
 
             break;
 /////////////////////////////////////////////////////
         case "View All Employees":
 
-            break;
 
 
 
+
+
+        break;
+
+
+/////////////////////////////////////////////////////
         case "Exit":
+            connection.end();
             doAgain = false;
             break;
     }}
@@ -126,26 +223,13 @@ function validateNum(x){
     return true;
 }
 
-function createEmployee(f,l,r,m) {
-    var query = connection.query(
-    "INSERT INTO employee SET ?",
-    {
-        first_name: f,
-        last_name: l,
-        role_id: r,
-        manager_id: m
-    },
-    function(err, res) {
-        if (err) throw err;
-        console.log(res.affectedRows + " employee added\n");
-    }
-    );
-    // logs the actual query being run
-    console.log(query.sql);
+async function createEmployee(f,l,r,m) {
+    await query("INSERT INTO employee SET ?",{first_name: f,last_name: l,role_id: r,manager_id: m})
+        console.log(" employee added\n");
 }
 
 function createRole(x,y,z) {
-    var query = connection.query(
+    connection.query(
         "INSERT INTO role SET ?",
         {
             title: x,
@@ -160,7 +244,7 @@ function createRole(x,y,z) {
 }
 
 function createDepartment(x){
-    var query = connection.query(
+    connection.query(
         "INSERT INTO department SET ?",
         {
             name: x
@@ -170,58 +254,74 @@ function createDepartment(x){
         console.log(res.affectedRows + " department created!\n");
         }
     );
-    connection.end();
+
 }
 
-function readRoles() {
+async function readDepartments() {
+    let depotList;
+    let tempList = await query("SELECT * FROM department");
+        depotList = tempList.map(function(iter){
+            return iter.name;  
+    });
+    return depotList;
+}
+
+
+
+
+async function readRoles() {
     let roleList;
-    connection.query("SELECT * FROM role", function (err, res) {  
-        roleList = res.map(function(iter){
-            return iter.title;
-        })
-    connection.end();
-        
+    let tempList = await query("SELECT * FROM role");
+    roleList = tempList.map(function(iter){
+        return iter.title;
     });
     return roleList;
 }
 
-function getRoleID(x){
-    connection.query("SELECT * FROM role", function (err, res) {  
-            return res.filter(function(y){
-                if (y.title === x){
+
+
+
+async function getDepotID(x){
+    let tempList = await query("SELECT * FROM department"); 
+            return tempList.filter(function(y){
+                if (y.name === x){
                     return y.id;
                 }
             })
-        })
-    connection.end();
+
 }
 
-
-function readStaff(){
-    let manageList;
-    connection.query("SELECT * FROM employee", function (err, res) {  
-        manageList = res.map(function(iter){
-            return (iter.first_name + " " + iter.last_name);
+async function getRoleID(x){
+    let tempList = await query("SELECT * FROM role");
+            let tempObj =  tempList.find(function(y){
+                return (y.title === x)
         })
-    connection.end();
+
+        return tempObj.id;
+}
+async function readStaffNames(){
+    let manageList;
+    let tempList = await query("SELECT * FROM employee");
+        manageList = tempList.map(function(iter){
+            return (iter.first_name + " " + iter.last_name);
+        });
     manageList.unshift("None");
         
-    });
+    
     return manageList;
 }
 
-function getManagerID(x){
-    connection.query("SELECT * FROM employee", function (err, res) {  
-        return res.filter(function(y){
+async function getEmployeeID(x){
+    let tempList = await query("SELECT * FROM employee");
+    let tempObj =  tempList.find(function(y){
             if ((y.first_name + " " + y.last_name) === x){
                 return y.id;
             }
         })
-    })
-connection.end();
+
+        return tempObj.id;
 }
 
-//////////////////////////////////////////////  You Are Here  ///////////////////////////////////////  check for dup first + last name, if true, prevent creation
 function updateEmployee(x,y){
     connection.query(
         "UPDATE employee SET ? WHERE ?",
@@ -238,12 +338,12 @@ function updateEmployee(x,y){
         })
 }
 
-
-function getEmployeeID(x,y){
-
-}
-
-
-function checkDupName(x){
-
+async function checkDupName(x){
+    let tempList = await query("SELECT * FROM employee");  
+    tempList.forEach(function(y){
+            if ((y.first_name + " " + y.last_name) === x){
+                return true;
+            }
+    })
+return false;
 }
