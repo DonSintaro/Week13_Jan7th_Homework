@@ -198,9 +198,9 @@ async function runManager(){
                 choices: await readRoles()
             }])
         
-            let roleID = await getRoleID(roleBuffer.roleSelected);
-            let manageID = await getEmployeeID(employeeBuffer.managerSelected);
-
+            let roleID = await getRoleID(roleBuffer.role);
+            let manageID = await getEmployeeID(employeeBuffer.employee);
+r
             updateEmployee(roleID,manageID);
             
 
